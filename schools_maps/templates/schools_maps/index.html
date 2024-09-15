@@ -22,11 +22,10 @@
         let heatLayer;
         let displayType = "Point";
         let selectedRegion = "全国";
-        let zoomLevel = defaultZoom; // Default zoom level
+        let zoomLevel = 9.0; // Default zoom level
 
         function initMap(schools, regionCenter) {
             console.log('Initializing map with', schools.length, 'schools');
-
             if (!map) {
                 map = L.map('map', {preferCanvas: true}).setView(regionCenter || defaultLocation, zoomLevel);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(map);
@@ -47,6 +46,7 @@
         function clearMarkers() {
             markers.forEach(marker => map.removeLayer(marker));
             markers = [];
+            
             if (heatLayer) {
                 map.removeLayer(heatLayer);
             }
@@ -69,27 +69,26 @@
                 }
             });
 
-            markers.forEach(marker => marker.addTo(map));
             if (document.getElementById('region-select').value === "全国") {
                 markers.forEach(marker => markersGroup.addLayer(marker));
                 map.addLayer(markersGroup);
                 clearMarkers();
             }
             else{
+                markers.forEach(marker => marker.addTo(map));
                 markersGroup.clearLayers();
             }
         }
 
-        function addHeatmap(schools, zoomLevel) {
-            var canvas = document.createElement('canvas');
-            var ctx = canvas.getContext('2d', { willReadFrequently: true });
-
+        function addHeatmap(schools) {
+      
             const heatData = schools
                 .filter(school => school.latitude && school.longitude && school.deviation)
                 .map(school => [school.latitude, school.longitude, school.deviation]);
 
             if (heatData.length > 0) {
-                heatLayer = L.heatLayer(heatData, { radius: Math.max(zoomLevel / 2, 10), blur: 10, minOpacity: 0.5, maxZoom: 18, 
+                console.log('Adding heatmap with', zoomLevel, 'data points');
+                heatLayer = L.heatLayer(heatData, { radius: Math.max(zoomLevel, 10), blur: 10, minOpacity: 0.5, maxZoom: 18, 
                     gradient: { 0.0: 'blue', 
                                 0.2: 'cyan', 
                                 0.4: 'lime', 
@@ -122,7 +121,7 @@
                 zoomLevel = 5; // Set a smaller zoom level for 全国
             }
             else{
-                zoomLevel = defaultZoom;
+                zoomLevel = 9;
             }
             
             fetchSchools();
