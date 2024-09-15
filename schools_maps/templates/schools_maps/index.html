@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Japan High School Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
+    <script>
+        let map;
+        const defaultLocation = [35.68944, 139.69167];
+        const defaultZoom = 10;
+        let markers = [];
+        let markersGroup = L.markerClusterGroup();
+        let heatLayer;
+        let displayType = "Point";
+
+        function initMap(schools, regionCenter, zoomLevel = defaultZoom) {
+            console.log('Initializing map with', schools.length, 'schools');
+
+            if (!map) {
+                map = L.map('map', {preferCanvas: true}).setView(regionCenter || defaultLocation, zoomLevel);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(map);
+            } else {
+                map.setView(regionCenter || defaultLocation, zoomLevel);
+            }
+
+            clearMarkers();
+            markersGroup.clearLayers();
+            console.log('Display type initMap:', displayType);
+            if (displayType === "Point") {
+                addMarkers(schools);
+            } else if (displayType === "Heatmap") {
+                addHeatmap(schools, zoomLevel);
+            }
+        }
+
+        function clearMarkers() {
+            markers.forEach(marker => map.removeLayer(marker));
+            markers = [];
+            if (heatLayer) {
+                map.removeLayer(heatLayer);
+            }
+        }
+
+        function addMarkers(schools) {
+            schools.forEach(school => {
+                if (school.latitude && school.longitude && school.name && school.region) {
+                    const popupContent = `
+                        <div>
+                            <h3>${school.name}</h3>
+                            <p>住所: ${school.address || ''}</p>
+                            <p>ホームページ: <a href="${school.url || '#'}" target="_blank">${school.url || ''}</a></p>
+                        </div>`;
+
+                    const marker = L.marker([school.latitude, school.longitude]).bindPopup(popupContent);
+                    markers.push(marker);
+                } else {
+                    console.warn('Missing school data:', school);
+                }
+            });
+
+            markers.forEach(marker => marker.addTo(map));
+            if (document.getElementById('region-select').value === "全国") {
+                markers.forEach(marker => markersGroup.addLayer(marker));
+                map.addLayer(markersGroup);
+                clearMarkers();
+            }
+            else{
+                markersGroup.clearLayers();
+            }
+        }
+
+        function addHeatmap(schools, zoomLevel) {
+            var canvas = document.createElement('canvas');
+            var ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+            const heatData = schools
+                .filter(school => school.latitude && school.longitude && school.deviation)
+                .map(school => [school.latitude, school.longitude, school.deviation]);
+
+            if (heatData.length > 0) {
+                heatLayer = L.heatLayer(heatData, { radius: Math.max(zoomLevel / 2, 10), blur: 10, minOpacity: 0.5, maxZoom: 18, 
+                    gradient: { 0.0: 'blue', 
+                                0.2: 'cyan', 
+                                0.4: 'lime', 
+                                0.6: 'yellow', 
+                                0.8: 'orange', 
+                                1.0: 'red'} }).addTo(map);
+            } else {
+                console.warn('No valid heatmap data available');
+            }
+        }
+
+        function fetchSchools(region, zoomLevel) {
+            const url = `/schools/${region ? `?region=${region}` : ''}`;
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => initMap(data.schools, data.region_center, zoomLevel))
+                .catch(error => console.error('Error fetching schools:', error));
+        }
+
+        function onSelectionChange() {
+            const selectedRegion = document.getElementById('region-select').value;
+            displayType = document.getElementById('display-type-select').value;
+            console.log('Selected region:', selectedRegion, 'Display type:', displayType);
+
+            let zoomLevel = defaultZoom; // Default zoom level
+
+            if (selectedRegion === "全国") {
+                zoomLevel = 5; // Set a smaller zoom level for 全国
+            }
+            
+            fetchSchools(selectedRegion, zoomLevel);
+            // If you have logic that depends on the displayType, you can add it here
+            // For example, if the display type affects the fetchSchools function
+        }
+
+
+        window.onload = () => {
+            const regions = ["東京都", "北海道", "青森県", "岩手県", "宮城県", "秋田県", "山形県", 
+                "福島県","茨城県", "栃木県", "群馬県", "埼玉県", "千葉県", "神奈川県",
+                "新潟県", "富山県", "石川県", "福井県", "山梨県", "長野県", "岐阜県",
+                "静岡県", "愛知県", "三重県", "滋賀県", "京都府", "大阪府", "兵庫県",
+                "奈良県", "和歌山県", "鳥取県", "島根県", "岡山県", "広島県", "山口県",
+                "徳島県", "香川県", "愛媛県", "高知県", "福岡県", "佐賀県", "長崎県",
+                "熊本県", "大分県", "宮崎県", "鹿児島県", "沖縄県"];
+
+            const regionSelectElement = document.getElementById('region-select');
+            regions.forEach(region => {
+                const option = document.createElement('option');
+                option.value = region;
+                option.textContent = region;
+                regionSelectElement.appendChild(option);
+            });
+
+            zoomLevel = 5;
+            fetchSchools("全国", zoomLevel);
+        };
+    </script>
+</head>
+<body>
+    <div style="display: flex;">
+        <div style="width: 10%; padding: 20px;font-family: 'Arial', sans-serif;">
+            <h2 style="font-family: 'Arial', sans-serif;">地域選択</h2>
+            <select id="region-select" onchange="onSelectionChange()">
+                <option value="全国" selected>全国</option>
+            </select>
+
+            <h2>表示タイプ</h2>
+            <select id="display-type-select" onchange="onSelectionChange()">
+                <option value="Point" selected>ポイント</option>
+                <option value="Heatmap">ヒートマップ</option>
+            </select>
+        </div>
+        <div id="map" style="width: 90%; height: 800px;"></div>
+    </div>
+</body>
+</html>
