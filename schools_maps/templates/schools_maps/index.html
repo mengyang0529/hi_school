@@ -88,7 +88,7 @@
 
             if (heatData.length > 0) {
                 console.log('Adding heatmap with', zoomLevel, 'data points');
-                heatLayer = L.heatLayer(heatData, { radius: Math.max(zoomLevel, 10), blur: 10, minOpacity: 0.5, maxZoom: 18, 
+                heatLayer = L.heatLayer(heatData, { radius: zoomLevel, blur: 5, minOpacity: 0.5, maxZoom: 18, 
                     gradient: { 0.0: 'blue', 
                                 0.2: 'cyan', 
                                 0.4: 'lime', 
