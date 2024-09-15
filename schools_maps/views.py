@@ -11,7 +11,6 @@ def index(request):
 def get_schools(request):
     """Fetches schools based on selected region and display type."""
     region = request.GET.get('region')  # Get selected region
-    display_type = request.GET.get('displayType')  # Get display type (Point or Heatmap)
 
     if region == "全国":
         schools = School.objects.all().values(

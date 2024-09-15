@@ -16,13 +16,15 @@
     <script>
         let map;
         const defaultLocation = [35.68944, 139.69167];
-        const defaultZoom = 10;
+        const defaultZoom = 9;
         let markers = [];
         let markersGroup = L.markerClusterGroup();
         let heatLayer;
         let displayType = "Point";
+        let selectedRegion = "全国";
+        let zoomLevel = defaultZoom; // Default zoom level
 
-        function initMap(schools, regionCenter, zoomLevel = defaultZoom) {
+        function initMap(schools, regionCenter) {
             console.log('Initializing map with', schools.length, 'schools');
 
             if (!map) {
@@ -34,11 +36,11 @@
 
             clearMarkers();
             markersGroup.clearLayers();
-            console.log('Display type initMap:', displayType);
+
             if (displayType === "Point") {
                 addMarkers(schools);
             } else if (displayType === "Heatmap") {
-                addHeatmap(schools, zoomLevel);
+                addHeatmap(schools);
             }
         }
 
@@ -99,8 +101,8 @@
             }
         }
 
-        function fetchSchools(region, zoomLevel) {
-            const url = `/schools/${region ? `?region=${region}` : ''}`;
+        function fetchSchools() {
+            const url = `/schools/${selectedRegion ? `?region=${selectedRegion}` : ''}`;
             fetch(url)
                 .then(response => {
                     if (!response.ok) {
@@ -108,26 +110,24 @@
                     }
                     return response.json();
                 })
-                .then(data => initMap(data.schools, data.region_center, zoomLevel))
+                .then(data => initMap(data.schools, data.region_center))
                 .catch(error => console.error('Error fetching schools:', error));
         }
 
         function onSelectionChange() {
-            const selectedRegion = document.getElementById('region-select').value;
+            selectedRegion = document.getElementById('region-select').value;
             displayType = document.getElementById('display-type-select').value;
-            console.log('Selected region:', selectedRegion, 'Display type:', displayType);
-
-            let zoomLevel = defaultZoom; // Default zoom level
 
             if (selectedRegion === "全国") {
                 zoomLevel = 5; // Set a smaller zoom level for 全国
             }
+            else{
+                zoomLevel = defaultZoom;
+            }
             
-            fetchSchools(selectedRegion, zoomLevel);
-            // If you have logic that depends on the displayType, you can add it here
-            // For example, if the display type affects the fetchSchools function
-        }
+            fetchSchools();
 
+        }
 
         window.onload = () => {
             const regions = ["東京都", "北海道", "青森県", "岩手県", "宮城県", "秋田県", "山形県", 
@@ -147,7 +147,7 @@
             });
 
             zoomLevel = 5;
-            fetchSchools("全国", zoomLevel);
+            fetchSchools();
         };
     </script>
 </head>
